@@ -1,0 +1,25 @@
+{
+  "name": "company-website",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "predeploy": "npm install",
+    "deploy": "gh-pages -d ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xli2022/company-website.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xli2022/company-website/issues"
+  },
+  "homepage": "https://xli2022.github.io/company-website/",
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
+  }
+}
