@@ -3,6 +3,7 @@ const path = require('path');
 
 ghpages.publish('.', {
   dotfiles: false,
+  add: true, // Prevents ENAMETOOLONG error by not removing all files first
   filter: (file) => {
     // Exclude node_modules and .claude directories
     return !file.includes('node_modules') &&
