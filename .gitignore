@@ -25,6 +25,7 @@ out/
 *.swp
 *.swo
 .DS_Store
+.claude/
 
 # Temporary files
 tmp/
