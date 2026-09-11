@@ -5,9 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "live-server",
-    "predeploy": "npm install",
-    "deploy": "node deploy.js"
+    "dev": "live-server"
   },
   "repository": {
     "type": "git",
@@ -21,7 +19,6 @@
   },
   "homepage": "https://xli2022.github.io/company-website/",
   "devDependencies": {
-    "gh-pages": "^6.3.0",
     "live-server": "^1.2.2"
   }
 }
