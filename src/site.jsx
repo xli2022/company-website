@@ -5,7 +5,7 @@ const TONES = {
   orange: ['var(--orange-100)', 'var(--orange-700)'],
   sky: ['var(--sky-100)', 'var(--sky-700)'],
   grass: ['#E3F6DC', 'var(--grass-700)'],
-  gold: ['#FFF3CC', 'var(--gold-700)'],
+  gold: ['#FFF3CC', '#7A5800'], // --gold-700 is only 2.9:1 on this cream
   ruby: ['#FDE3E1', 'var(--ruby-700)'],
   neutral: ['var(--ink-100)', 'var(--ink-700)'],
   solid: ['var(--ink-900)', '#fff'],
@@ -46,14 +46,19 @@ function Button({ variant = 'primary', size = 'md', href, children, iconRight, d
       onMouseEnter={() => setHover(true)} onMouseLeave={() => { setHover(false); setPress(false); }}
       onMouseDown={() => setPress(true)} onMouseUp={() => setPress(false)}
       style={{
-        display: fullWidth ? 'flex' : 'inline-flex', width: fullWidth ? '100%' : undefined, alignItems: 'center', justifyContent: 'center', gap: 8,
-        fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: s.fs, lineHeight: 1.2, whiteSpace: 'nowrap', textDecoration: 'none',
-        padding: s.pad, borderRadius: 'var(--radius-pill)', border: '2px solid ' + v.bd, cursor: disabled ? 'not-allowed' : 'pointer',
-        color: v.fg, background: hover && !disabled ? v.hov : v.bg, opacity: disabled ? 0.45 : 1,
-        boxShadow: v.ledge ? '0 ' + depth + 'px 0 ' + v.ledge : 'none', transform: 'translateY(' + y + 'px)',
-        transition: 'transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background var(--dur-fast)', ...style,
+        // the hit box: it never moves, so a press that starts on the button always ends on it
+        display: fullWidth ? 'flex' : 'inline-flex', width: fullWidth ? '100%' : undefined, padding: 0, border: 0, background: 'none', font: 'inherit',
+        borderRadius: 'var(--radius-pill)', textDecoration: 'none', cursor: disabled ? 'not-allowed' : 'pointer', color: v.fg, opacity: disabled ? 0.45 : 1, ...style,
       }}>
-      {children}{iconRight ? <span aria-hidden="true">{iconRight}</span> : null}
+      <span style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: s.fs, lineHeight: 1.2, whiteSpace: 'nowrap',
+        padding: s.pad, borderRadius: 'var(--radius-pill)', border: '2px solid ' + v.bd, background: hover && !disabled ? v.hov : v.bg,
+        boxShadow: v.ledge ? '0 ' + depth + 'px 0 ' + v.ledge : 'none', transform: 'translateY(' + y + 'px)',
+        transition: 'transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background var(--dur-fast)',
+      }}>
+        {children}{iconRight ? <span aria-hidden="true">{iconRight}</span> : null}
+      </span>
     </Tag>
   );
 }
@@ -62,7 +67,7 @@ function Button({ variant = 'primary', size = 'md', href, children, iconRight, d
 function SectionHeading({ eyebrow, title, description, align = 'left', inverse, style }) {
   return (
     <div style={{ textAlign: align, maxWidth: 720, margin: align === 'center' ? '0 auto' : undefined, ...style }}>
-      {eyebrow ? <div style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 13, letterSpacing: 'var(--tracking-eyebrow)', textTransform: 'uppercase', color: inverse ? 'var(--orange-300)' : 'var(--orange-600)', marginBottom: 10 }}>{eyebrow}</div> : null}
+      {eyebrow ? <div style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 13, letterSpacing: 'var(--tracking-eyebrow)', textTransform: 'uppercase', color: inverse ? 'var(--orange-300)' : 'var(--orange-700)', marginBottom: 10 }}>{eyebrow}</div> : null}
       <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(32px, 4.5vw, 48px)', lineHeight: 1.08, letterSpacing: 'var(--tracking-display)', color: inverse ? '#fff' : 'var(--text-heading)', margin: 0, textWrap: 'balance' }}>{title}</h2>
       {description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1.6, color: inverse ? 'var(--ink-200)' : 'var(--text-muted)', margin: '14px 0 0', textWrap: 'pretty' }}>{description}</p> : null}
     </div>
@@ -163,25 +168,35 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
   const [hover, setHover] = React.useState(null);
   const [open, setOpen] = React.useState(false);
   const narrow = useNarrow();
+  const root = React.useRef(null);
   React.useEffect(() => { if (!narrow) setOpen(false); }, [narrow]);
+  // the open menu closes on Escape, when the page is scrolled, and when a press or the focus lands outside the header
   React.useEffect(() => {
     if (!open) return;
+    const y0 = window.scrollY;
     const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const scroll = () => { if (Math.abs(window.scrollY - y0) > 24) setOpen(false); };
+    const out = (e) => { if (root.current && !root.current.contains(e.target)) setOpen(false); };
     window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
+    window.addEventListener('scroll', scroll, { passive: true });
+    document.addEventListener('pointerdown', out);
+    document.addEventListener('focusin', out);
+    return () => { window.removeEventListener('keydown', esc); window.removeEventListener('scroll', scroll); document.removeEventListener('pointerdown', out); document.removeEventListener('focusin', out); };
   }, [open]);
+  // with a real href and no onNavigate, the link is left to the browser, so new-tab and new-window clicks work as usual
   const nav = (label) => (e) => { setOpen(false); if (onNavigate) { e.preventDefault(); onNavigate(label); } };
-  const bar = (n) => ({ position: 'absolute', left: 11, width: 22, height: 3, borderRadius: 2, background: 'var(--ink-900)', transition: 'transform var(--dur-base) var(--ease-out), opacity var(--dur-fast)',
+  // drawn as a border in the text colour, so the icon survives forced-colors (high contrast) mode
+  const bar = (n) => ({ position: 'absolute', left: 11, width: 22, height: 0, borderTop: '3px solid currentColor', borderRadius: 2, transition: 'transform var(--dur-base) var(--ease-out), opacity var(--dur-fast)',
     top: 20.5, transform: open ? (n === 0 ? 'rotate(45deg)' : n === 2 ? 'rotate(-45deg)' : 'scaleX(0)') : 'translateY(' + (n - 1) * 7 + 'px)', opacity: open && n === 1 ? 0 : 1 });
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderBottom: '2px solid var(--ink-100)', ...style }}>
+    <header ref={root} style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderBottom: '2px solid var(--ink-100)', ...style }}>
       <div style={{ maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)', height: 'var(--nav-height)', display: 'flex', alignItems: 'center', gap: narrow ? 12 : 24 }}>
         <a href={(links[0] && links[0].href) || '#'} onClick={nav(links[0] && links[0].label)} style={{ display: 'flex', alignItems: 'center', marginRight: 'auto' }}>
           {logoSrc ? <img src={logoSrc} alt={logoAlt} style={{ height: narrow ? 34 : 40, display: 'block' }} /> : <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24, color: 'var(--ink-900)' }}>{logoAlt}</span>}
         </a>
         {narrow ? (
           <button type="button" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="bt-nav-menu" onClick={() => setOpen(!open)}
-            style={{ position: 'relative', width: 44, height: 44, flex: 'none', padding: 0, border: '2px solid var(--ink-100)', borderRadius: 'var(--radius-md)', background: open ? 'var(--ink-100)' : '#fff', cursor: 'pointer' }}>
+            style={{ position: 'relative', width: 44, height: 44, flex: 'none', padding: 0, border: '2px solid var(--ink-100)', borderRadius: 'var(--radius-md)', background: open ? 'var(--ink-100)' : '#fff', color: 'var(--ink-900)', cursor: 'pointer' }}>
             <span aria-hidden="true" style={bar(0)}></span><span aria-hidden="true" style={bar(1)}></span><span aria-hidden="true" style={bar(2)}></span>
           </button>
         ) : (
@@ -203,7 +218,7 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
         )}
       </div>
       {narrow && open ? (
-        <nav id="bt-nav-menu" style={{ position: 'absolute', left: 0, right: 0, top: '100%', background: '#fff', borderBottom: '2px solid var(--ink-100)', boxShadow: 'var(--shadow-pop)', padding: '8px var(--gutter) 20px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <nav id="bt-nav-menu" style={{ position: 'absolute', left: 0, right: 0, top: '100%', background: '#fff', borderBottom: '2px solid var(--ink-100)', boxShadow: 'var(--shadow-pop)', padding: '8px var(--gutter) 20px', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 'calc(100dvh - var(--nav-height))', overflowY: 'auto' }}>
           {links.map((l) => {
             const on = active === l.label;
             return (
@@ -273,6 +288,8 @@ const A = ROOT + 'site/media/';
 const URLS = { 'Home': 'index.html', 'Games': 'games.html', 'Jobs': 'jobs.html', 'Contact': 'contact.html', 'Rich Revenge': 'rich-revenge/index.html', 'Realm Defense': 'realm-defense/index.html', 'Draft Wars': 'draft-wars/index.html' };
 const url = (p) => ROOT + (URLS[p] || URLS.Home);
 const LINKS = ['Home', 'Games', 'Jobs', 'Contact'].map((label) => ({ label, href: url(label) }));
+// every in-site link is a plain anchor to the page's own URL
+const link = (p) => ({ href: url(p) });
 const wrap = { maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' };
 const GAMES = [
   // scene: the full-bleed original art the hero camera travels through; focus: the point the camera pushes into (0–1 from the image's top-left)
@@ -344,7 +361,7 @@ const TAKE_BRIDGE = [0.44, 0.55];
 const TAKE_JUMP = [0.2, 0.62, 0.8];
 const lerpMap = (m, p) => { p = Math.max(m[0][0], p); for (let i = 1; i < m.length; i++) { const a = m[i - 1], b = m[i]; if (p <= b[0]) return a[1] + (b[1] - a[1]) * (p - a[0]) / (b[0] - a[0]); } return m[m.length - 1][1]; };
 const takeX = (p) => lerpMap(TAKE_MAP, p);
-function Hero({ go }) {
+function Hero({ go, onFilm }) {
   const track = React.useRef(null);
   const [x, setX] = React.useState(0);
   const N = GAMES.length;
@@ -394,9 +411,13 @@ function Hero({ go }) {
     if (mq.addEventListener) mq.addEventListener('change', on); else mq.addListener(on);
     return () => { if (mq.removeEventListener) mq.removeEventListener('change', on); else mq.removeListener(on); };
   }, []);
-  const FILM_H = tall ? 'min(120vw, 100%)' : '100%';
+  // 200px is kept free under the film for the title and its line, however short the stage is
+  const FILM_H = tall ? 'min(120vw, 100% - 200px)' : '100%';
+  React.useEffect(() => { if (onFilm) onFilm(depth); }, [depth]);
   xRef.current = x;
   React.useEffect(() => {
+    // with reduced motion the poster is the whole hero: do not download or decode the film at all
+    if (REDUCED && TAKE) return;
     const cv = canvas.current;
     const gl = cv && cv.getContext('webgl', { antialias: false, alpha: false });
     if (!gl) return;
@@ -404,7 +425,12 @@ function Hero({ go }) {
     const pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p; varying vec2 v; void main(){ v = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5); gl_Position = vec4(p, 0.0, 1.0); }'));
     gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, [
+      // fp16 (mediump on most Android GPUs) cannot hold the noise hash, so ask for highp wherever it exists
+      '#ifdef GL_FRAGMENT_PRECISION_HIGH',
+      'precision highp float;',
+      '#else',
       'precision mediump float;',
+      '#endif',
       'uniform sampler2D tf, tk; uniform float lay, zf, fl, br; uniform vec2 ff;',
       'uniform sampler2D ta, tb; uniform vec2 res, sa, sb, fa, fb, m, pc; uniform vec3 ma, mb; uniform float za, zb, mx, pr, ks, cs, tm, en; varying vec2 v;',
       'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
@@ -495,7 +521,7 @@ function Hero({ go }) {
     ['ta', 'tb', 'res', 'sa', 'sb', 'fa', 'fb', 'm', 'za', 'zb', 'mx', 'pc', 'pr', 'ks', 'cs', 'tm', 'ma', 'mb', 'en', 'tf', 'tk', 'lay', 'zf', 'fl', 'br', 'ff'].forEach((k) => { U[k] = gl.getUniformLocation(pr, k); });
     const tex = GAMES.map(() => null);
     const ext = GAMES.map(() => null);
-    let alive = true, left = GAMES.reduce((k, g) => k + (g.layers ? 3 : 1), 0), raf = 0;
+    let alive = true, left = TAKE ? 0 : GAMES.reduce((k, g) => k + (g.layers ? 3 : 1), 0), raf = 0, vis = true;
     const t0 = performance.now();
     // the take: a muted video that is never played, only seeked to the frame the scroll position asks for
     const vid = TAKE ? document.createElement('video') : null;
@@ -515,7 +541,8 @@ function Hero({ go }) {
     const zoom = (n, xx) => 1.06 + 0.16 * c01(xx - (n === 0 ? 0 : n + 0.3)) + (n === N - 1 ? 0.35 : 2.4) * Math.pow(Math.max(0, xx - (n + 0.9)) / 0.85, 2);
     const ss = (e0, e1, v) => { const k = c01((v - e0) / (e1 - e0)); return k * k * (3 - 2 * k); };
     const draw = () => {
-      raf = REDUCED || !alive ? 0 : requestAnimationFrame(draw);
+      // the loop only runs while the hero is on screen
+      raf = REDUCED || !alive || !vis ? 0 : requestAnimationFrame(draw);
       if (left > 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
       if (!w || !h) return;
@@ -527,9 +554,10 @@ function Hero({ go }) {
         const p = pRef.current, tv = (performance.now() - t0) / 1000, cv2 = cur.current, end = Math.max(0, vid.duration - 0.06);
         const T = c01((p - TAKE_BRIDGE[0]) / (TAKE_BRIDGE[1] - TAKE_BRIDGE[0]));
         // take whatever frame each part has finished decoding, and only then ask for the next one
-        const grab = (tx, v) => { if (v.readyState < 2 || v.seeking) return -1; try { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); return v.currentTime; } catch (e) { return -1; } };
-        if (T < 1) { const g = grab(vtex, vid); if (g >= 0) got1 = g; }
-        if (T > 0) { const g = grab(vtex2, vid2); if (g >= 0) got2 = g; }
+        // a frame that is already in the texture is not uploaded again
+        const grab = (tx, v, last) => { if (v.readyState < 2 || v.seeking) return -1; if (v.currentTime === last) return last; try { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); return v.currentTime; } catch (e) { return -1; } };
+        if (T < 1) { const g = grab(vtex, vid, got1); if (g >= 0) got1 = g; }
+        if (T > 0) { const g = grab(vtex2, vid2, got2); if (g >= 0) got2 = g; }
         const seek = (v, at, want) => { const nx = at + (want - at) * 0.2; if (!v.seeking && Math.abs(v.currentTime - nx) > 0.012) v.currentTime = nx; return nx; };
         // inside the bridge both parts must sit exactly on their held frames, so skip the easing there
         const hold = (v, want) => { if (!v.seeking && Math.abs(v.currentTime - want) > 0.012) v.currentTime = want; return want; };
@@ -551,7 +579,7 @@ function Hero({ go }) {
         // the horse grows about a point off the right edge, so it gets bigger and leaves to the left, as if the camera passed it
         gl.uniform1f(U.za, 1.03); gl.uniform1f(U.zb, 1.03); gl.uniform1f(U.lay, 0); gl.uniform1f(U.fl, 1);
         gl.uniform1f(U.br, held ? mid : -mid); gl.uniform2f(U.ff, 1.25, 0.55); gl.uniform1f(U.zf, 1 + 2.1 * mid * mid);
-        gl.uniform1f(U.mx, 0); gl.uniform1f(U.ks, 1); gl.uniform1f(U.cs, 1); gl.uniform1f(U.pr, 0); gl.uniform1f(U.tm, tv);
+        gl.uniform1f(U.mx, 0); gl.uniform1f(U.ks, 1); gl.uniform1f(U.cs, 1); gl.uniform1f(U.pr, 0); gl.uniform1f(U.tm, tv % 600);
         gl.uniform3f(U.ma, 1, 0.98, 0.94); gl.uniform3f(U.mb, 0.93, 0.97, 1);
         gl.uniform1f(U.en, ss(0, 1, (p - 0.95) / 0.05));
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -559,6 +587,7 @@ function Hero({ go }) {
         return;
       }
       const xx = xRef.current, a = Math.min(N - 1, Math.max(0, Math.floor(xx - 0.75))), b = Math.min(N - 1, a + 1);
+      if (!tex[a] || !tex[b]) return;
       // T: how far through the portal we are. The next world opens as a small window at this world's focus point and grows until it is the screen.
       const T = b === a ? 0 : c01((xx - (b + 0.15)) / 0.6);
       const rs = w / h, ri = tex[a].w / tex[a].h, sx = rs > ri ? 1 : rs / ri, sy = rs > ri ? ri / rs : 1;
@@ -587,6 +616,7 @@ function Hero({ go }) {
       gl.uniform1f(U.tm, t);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
+    const ready = () => { if (--left === 0) { if (!TAKE) setDepth(true); if (!raf) draw(); } };
     const load = (src, put) => {
       const im = new Image();
       im.onload = () => {
@@ -597,17 +627,25 @@ function Hero({ go }) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         put({ t, w: im.naturalWidth, h: im.naturalHeight });
-        if (--left === 0) { if (!TAKE) setDepth(true); if (!raf) draw(); }
+        ready();
       };
+      // a picture that fails to load must not hold the film back: the take falls back to a plain dissolve without its matte
+      im.onerror = () => { if (alive) ready(); };
       im.src = src;
     };
     let horse = null;
     if (TAKE) { left++; load(A + 'hero-take-horse.png', (v) => { horse = v; }); }
-    GAMES.forEach((g, n) => {
+    // the film never shows the game backgrounds, so it does not wait for them
+    if (!TAKE) GAMES.forEach((g, n) => {
       load(g.scene || g.image, (v) => { tex[n] = v; });
       if (g.layers) { const e = {}; ext[n] = e; load(g.layers.back, (v) => { e.back = v; }); load(g.layers.mask, (v) => { e.mask = v; }); }
     });
-    return () => { alive = false; if (raf) cancelAnimationFrame(raf); };
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { vis = es[es.length - 1].isIntersecting; if (vis && alive && !raf && left === 0) draw(); }) : null;
+    if (io) io.observe(cv);
+    // if the browser takes the GL context away, stop drawing and bring the poster back instead of leaving a blank stage
+    const lost = () => { alive = false; if (raf) cancelAnimationFrame(raf); raf = 0; setDepth(false); };
+    cv.addEventListener('webglcontextlost', lost);
+    return () => { alive = false; if (raf) cancelAnimationFrame(raf); if (io) io.disconnect(); cv.removeEventListener('webglcontextlost', lost); };
   }, []);
   const jump = (n) => {
     if (!track.current) return;
@@ -617,7 +655,7 @@ function Hero({ go }) {
   const active = x < 0.5 ? -1 : Math.min(N - 1, Math.max(0, Math.round(x - 1)));
   return (
     <section ref={track} style={{ position: 'relative', height: REDUCED ? 'auto' : 'calc(' + STAGE_H + ' * ' + (TAKE ? TAKE_SCREENS + 1 : END + 0.6) + ')', background: 'var(--paper)' }}>
-      <div ref={stage} onMouseMove={move} onMouseLeave={() => aim(0, 0)} style={{ '--mx': 0, '--my': 0, position: REDUCED ? 'relative' : 'sticky', top: NAV, height: STAGE_H, overflow: 'hidden', background: TAKE ? 'var(--paper)' : 'var(--ink-900)', color: '#fff' }}>
+      <div ref={stage} onMouseMove={move} onMouseLeave={() => aim(0, 0)} style={{ '--mx': 0, '--my': 0, position: REDUCED ? 'relative' : 'sticky', top: REDUCED ? 0 : NAV, height: STAGE_H, overflow: 'hidden', background: TAKE ? 'var(--paper)' : 'var(--ink-900)', color: '#fff' }}>
         {/* the world: follows the pointer (outer), drifts on its own (inner), and is pushed into by scroll (art layers) */}
         <canvas ref={canvas} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: FILM_H, display: 'block', opacity: depth ? 1 : 0, zIndex: depth ? 0 : -1 }}></canvas>
         {/* fallback when WebGL is unavailable: the same art as flat layers */}
@@ -652,8 +690,8 @@ function Hero({ go }) {
           </h1>
           <p style={{ fontSize: 'clamp(17px, 1.6vw, 20px)', lineHeight: 1.6, margin: '20px 0 32px', maxWidth: 620, color: '#fff', animation: 'bt-fade 600ms 750ms both' }}>From the kitchen drama of Rich Revenge to the strategic depths of Realm Defense and the fast-paced action of Draft Wars, Babeltime crafts intuitive, fun games for heroes everywhere.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <div style={{ animation: 'bt-drop 520ms 900ms var(--ease-out) both' }}><Button size="lg" iconRight="→" onClick={() => go('Games')}>Explore our games</Button></div>
-            <div style={{ animation: 'bt-drop 520ms 1020ms var(--ease-out) both' }}><Button size="lg" variant="light" onClick={() => go('Jobs')}>Join our team</Button></div>
+            <div style={{ animation: 'bt-drop 520ms 900ms var(--ease-out) both' }}><Button size="lg" iconRight="→" {...link('Games')}>Explore our games</Button></div>
+            <div style={{ animation: 'bt-drop 520ms 1020ms var(--ease-out) both' }}><Button size="lg" variant="light" {...link('Jobs')}>Join our team</Button></div>
           </div>
         </div>
 
@@ -699,7 +737,7 @@ function Hero({ go }) {
         {TAKE && !REDUCED ? GAMES.map((g, n) => {
           const tin = c01((x - (n + 0.6)) / 0.25), o = tin * (1 - c01((x - (n + 1.2)) / 0.2));
           return (
-            <div key={g.title} aria-hidden={o < 0.5} style={{ position: 'absolute', left: 'max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)))', right: 'var(--gutter)', top: tall ? 'calc(120vw + 24px)' : 'auto', bottom: tall ? 'auto' : 'clamp(20px, 9%, 120px)', pointerEvents: 'none', opacity: o, visibility: o > 0 ? 'visible' : 'hidden', transform: 'translateY(' + ((1 - tin) * 30) + 'px)' }}>
+            <div key={g.title} aria-hidden={o < 0.5} style={{ position: 'absolute', left: 'max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)))', right: 'var(--gutter)', top: tall ? 'calc(' + FILM_H + ' + 24px)' : 'auto', bottom: tall ? 'auto' : 'clamp(20px, 9%, 120px)', pointerEvents: 'none', opacity: o, visibility: o > 0 ? 'visible' : 'hidden', transform: 'translateY(' + ((1 - tin) * 30) + 'px)' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: tall ? 'clamp(40px, 13vw, 72px)' : 'clamp(34px, 10vw, 164px)', lineHeight: 0.92, letterSpacing: '-0.01em', color: tall ? 'var(--ink-900)' : '#fff', margin: 0, textShadow: tall ? 'none' : '0 2px 28px rgba(20,35,59,.4)' }}>{g.short}</h2>
               <p style={{ fontSize: 'clamp(16px, 1.5vw, 22px)', lineHeight: 1.4, color: tall ? 'var(--ink-700)' : '#fff', margin: tall ? '12px 0 0' : '16px 0 0', textShadow: tall ? 'none' : '0 1px 12px rgba(20,35,59,.55)' }}>{g.tagline}</p>
             </div>
@@ -742,8 +780,8 @@ function HeroClassic({ go }) {
           </h1>
           <p style={{ fontSize: 'clamp(17px, 1.6vw, 20px)', lineHeight: 1.6, margin: '20px 0 32px', maxWidth: 520, color: '#fff', animation: 'bt-fade 600ms 750ms both' }}>From the kitchen drama of Rich Revenge to the strategic depths of Realm Defense and the fast-paced action of Draft Wars, Babeltime crafts intuitive, fun games for heroes everywhere.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ animation: 'bt-drop 520ms 900ms var(--ease-out) both' }}><Button size="lg" iconRight="→" onClick={() => go('Games')}>Explore our games</Button></div>
-            <div style={{ animation: 'bt-drop 520ms 1020ms var(--ease-out) both' }}><Button size="lg" variant="light" onClick={() => go('Jobs')}>Join our team</Button></div>
+            <div style={{ animation: 'bt-drop 520ms 900ms var(--ease-out) both' }}><Button size="lg" iconRight="→" {...link('Games')}>Explore our games</Button></div>
+            <div style={{ animation: 'bt-drop 520ms 1020ms var(--ease-out) both' }}><Button size="lg" variant="light" {...link('Jobs')}>Join our team</Button></div>
           </div>
         </div>
         <HeroFrame game={game} />
@@ -767,19 +805,20 @@ function HeroClassic({ go }) {
   );
 }
 // After the film: the studio's own words and the two ways in, set on the paper the clouds turn into.
-function HeroOutro({ go }) {
+function HeroOutro({ go, film }) {
   return (
     <section style={{ ...wrap, padding: '0 var(--gutter)', position: 'relative', zIndex: 2,
       // pulled up over the lower half of the film's last, all-white screen, which halves the empty stretch after the clouds;
-      // it stays invisible until the clouds have started, so it never sits on top of the picture
-      marginTop: REDUCED ? 0 : 'calc(' + STAGE_H + ' * -0.5)', opacity: REDUCED ? 1 : 'clamp(0, calc((var(--take-p, 1) - 0.9) * 12), 1)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      // it stays invisible until the clouds have started, so it never sits on top of the picture. Without the film (no WebGL,
+      // still loading, reduced motion) there are no clouds to arrive on, so it simply follows the poster.
+      marginTop: film ? 'calc(' + STAGE_H + ' * -0.5)' : 'clamp(48px, 7vw, 96px)', opacity: film ? 'clamp(0, calc((var(--take-p, 1) - 0.9) * 12), 1)' : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <Badge tone="orange">Game development studio · Berkeley, CA</Badge>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(40px, 6vw, 80px)', lineHeight: 1.04, letterSpacing: 'var(--tracking-display)', color: 'var(--ink-900)', margin: '24px 0 0', maxWidth: 940 }}>Creating worlds you’ll love to inhabit.</h1>
         <p style={{ fontSize: 'clamp(17px, 1.6vw, 20px)', lineHeight: 1.6, color: 'var(--ink-700)', margin: '24px 0 32px', maxWidth: 640 }}>From the kitchen drama of Rich Revenge to the strategic depths of Realm Defense and the fast-paced action of Draft Wars, Babeltime crafts intuitive, fun games for heroes everywhere.</p>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Button size="lg" iconRight="→" onClick={() => go('Games')}>Explore our games</Button>
-          <Button size="lg" variant="dark" onClick={() => go('Jobs')}>Join our team</Button>
+          <Button size="lg" iconRight="→" {...link('Games')}>Explore our games</Button>
+          <Button size="lg" variant="dark" {...link('Jobs')}>Join our team</Button>
         </div>
       </div>
     </section>
@@ -803,9 +842,11 @@ function DepthCard({ game, go }) {
   const store = game.href && game.href.indexOf('play.google') > -1;
   const Tag = game.href ? 'a' : 'div';
   return (
-    <div style={{ width: '100%', display: 'flex', perspective: 900 }}>
-      <Tag ref={ref} href={game.page ? url(game.page) : game.href} onClick={game.page && go ? (e) => { e.preventDefault(); go(game.page); } : undefined} aria-label={game.title} onMouseMove={move} onMouseLeave={leave} onMouseDown={() => setPress(true)} onMouseUp={() => setPress(false)}
-        style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', textDecoration: 'none', cursor: 'pointer', transformStyle: 'preserve-3d',
+    <div style={{ width: '100%', display: 'flex' }}>
+      {/* the anchor is the hit box and never moves; the card inside it tilts and presses, so a click near an edge is not lost */}
+      <Tag ref={ref} {...(game.page ? link(game.page) : { href: game.href })} aria-label={game.title} onMouseMove={move} onMouseLeave={leave} onMouseDown={() => setPress(true)} onMouseUp={() => setPress(false)}
+        style={{ flex: 1, minWidth: 0, display: 'flex', textDecoration: 'none', cursor: 'pointer', perspective: 900 }}>
+      <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', transformStyle: 'preserve-3d',
           transform: 'translateY(' + (press ? 6 : t.on ? -6 : 0) + 'px) rotateX(' + t.rx + 'deg) rotateY(' + t.ry + 'deg)', transition: 'transform ' + (press ? '90ms var(--ease-out)' : tr) }}>
         <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius-xl)', background: '#fff', transition: 'box-shadow 200ms var(--ease-out)',
           boxShadow: 'inset 0 0 0 ' + (t.on ? 4 : 0) + 'px ' + game.accent + ', 0 ' + ledge + 'px 0 ' + game.accent + ', 0 ' + (t.on ? 34 : 14) + 'px ' + (t.on ? 56 : 30) + 'px rgba(20,35,59,' + (t.on ? 0.22 : 0.12) + ')' }}></div>
@@ -826,6 +867,7 @@ function DepthCard({ game, go }) {
             </div>
           </div>
         </div>
+      </div>
       </Tag>
     </div>
   );
@@ -843,7 +885,7 @@ function Reveal({ children, delay = 0, basis = '340px' }) {
 }
 function Games({ featured, go }) {
   return (
-    <section style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)' }}>
+    <section id="games" style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)', scrollMarginTop: NAV }}>
       <SectionHeading eyebrow="The Library" title="Featured Games" description="Immerse yourself in epic adventures crafted with passion and precision." align="center" />
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 48 }}>
         {GAMES.map((g, n) => <Reveal key={g.title} delay={n * 120} basis={featured ? '100%' : '340px'}>{featured ? <Tilt><GameCard {...g} layout="horizontal" style={{ width: '100%' }} /></Tilt> : <DepthCard game={g} go={go} />}</Reveal>)}
@@ -853,7 +895,7 @@ function Games({ featured, go }) {
 }
 function About() {
   return (
-    <section style={{ background: 'var(--ink-900)' }}>
+    <section id="about" style={{ background: 'var(--ink-900)', scrollMarginTop: NAV }}>
       <div style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)', display: 'flex', gap: 'clamp(32px, 6vw, 64px)', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: '1 1 420px' }}>
           <SectionHeading inverse eyebrow="Babeltime Inc." title="A legacy of pure fun" />
@@ -872,7 +914,7 @@ function HireBand({ go }) {
     <section style={{ background: 'var(--orange-500)' }}>
       <div style={{ ...wrap, padding: '64px var(--gutter)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px, 4vw, 40px)', lineHeight: 1.1, color: 'var(--ink-900)', margin: 0 }}>Build the next world with us.</h2>
-        <Button variant="dark" size="lg" iconRight="→" onClick={() => go('Contact')}>Send your portfolio</Button>
+        <Button variant="dark" size="lg" iconRight="→" {...link('Contact')}>Send your portfolio</Button>
       </div>
     </section>
   );
@@ -886,7 +928,7 @@ function Jobs({ go }) {
         <Badge tone="neutral">Current openings</Badge>
         <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(26px, 3.4vw, 36px)', lineHeight: 1.1, color: 'var(--ink-900)', margin: 0 }}>No open roles right now.</h2>
         <p style={{ fontSize: 17, lineHeight: 1.7, color: 'var(--ink-700)', margin: 0, maxWidth: 620 }}>We’re always glad to meet passionate game developers. Send us your portfolio, and our recruiter will reach out as new roles open up.</p>
-        <Button iconRight="→" onClick={() => go('Contact')} style={{ marginTop: 8 }}>Send your portfolio</Button>
+        <Button iconRight="→" {...link('Contact')} style={{ marginTop: 8 }}>Send your portfolio</Button>
       </div>
     </section>
   );
@@ -1003,7 +1045,7 @@ function GamePage({ data, go }) {
           <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px, 4vw, 40px)', lineHeight: 1.1, color: 'var(--ink-900)', margin: 0 }}>{'Play ' + g.short + '.'}</h2>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {data.stores.map((st) => <Button key={st.label} variant="dark" size="lg" href={st.href} iconRight="→">{st.label}</Button>)}
-            <Button variant="light" size="lg" onClick={() => go('Games')}>All games</Button>
+            <Button variant="light" size="lg" {...link('Games')}>All games</Button>
           </div>
         </div>
       </section>
@@ -1040,17 +1082,20 @@ function Contact() {
 function App() {
   const page = URLS[window.BT_PAGE] ? window.BT_PAGE : 'Home';
   const go = (p) => { window.location.href = url(p); };
+  const [film, setFilm] = React.useState(false);
+  // old links to the home page's #games and #about still land on those sections once they exist
+  React.useEffect(() => { const el = window.location.hash.length > 1 && document.getElementById(window.location.hash.slice(1)); if (el) el.scrollIntoView(); }, []);
   return (
     <div>
-      <NavBar logoSrc={A + 'babeltime-logo.png'} links={LINKS} active={PAGES[page] ? 'Games' : page} onNavigate={go} />
-      {page === 'Home' ? <React.Fragment><Hero go={go} />{TAKE ? <HeroOutro go={go} /> : null}<Games go={go} /><About /><HireBand go={go} /></React.Fragment> : null}
+      <NavBar logoSrc={A + 'babeltime-logo.png'} links={LINKS} active={PAGES[page] ? 'Games' : page} />
+      {page === 'Home' ? <React.Fragment><Hero go={go} onFilm={setFilm} />{TAKE ? <HeroOutro go={go} film={film} /> : null}<Games go={go} /><About /><HireBand go={go} /></React.Fragment> : null}
       {page === 'Games' ? <Games go={go} /> : null}
       {PAGES[page] ? <GamePage key={page} data={PAGES[page]} go={go} /> : null}
       {page === 'Jobs' ? <Jobs go={go} /> : null}
       {page === 'Contact' ? <Contact /> : null}
       <Footer logoSrc={A + 'babeltime-logo.png'} tagline="Creating worlds you’ll love to inhabit."
-        columns={[{ title: 'Games', links: [{ label: 'Rich Revenge', href: url('Rich Revenge') }, { label: 'Realm Defense', href: url('Realm Defense') }, { label: 'Draft Wars', href: url('Draft Wars') }] }, { title: 'Studio', links: [{ label: 'Jobs', href: url('Jobs') }, { label: 'Contact', href: url('Contact') }] }]}
-        logoHref={url('Home')}
+        columns={[{ title: 'Games', links: [{ label: 'Rich Revenge', ...link('Rich Revenge') }, { label: 'Realm Defense', ...link('Realm Defense') }, { label: 'Draft Wars', ...link('Draft Wars') }] }, { title: 'Studio', links: [{ label: 'Jobs', ...link('Jobs') }, { label: 'Contact', ...link('Contact') }] }]}
+        logoHref={link('Home').href} onLogoClick={link('Home').onClick}
         copyright="© 2026 Babeltime Inc. All rights reserved." />
     </div>
   );
