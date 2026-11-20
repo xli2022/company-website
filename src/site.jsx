@@ -82,7 +82,7 @@ function SectionHeading({ eyebrow, title, description, align = 'left', inverse, 
 
 
 
-function GameCard({ image, genre, title, description, ctaLabel = 'Learn more', href, platforms = [], isNew, layout = 'vertical', style }) {
+function GameCard({ image, genre, title, description, ctaLabel = 'Learn more', href, stores, platforms = [], isNew, layout = 'vertical', style }) {
   const [hover, setHover] = React.useState(false);
   const horiz = layout === 'horizontal';
   return (
@@ -99,7 +99,10 @@ function GameCard({ image, genre, title, description, ctaLabel = 'Learn more', h
         <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30, lineHeight: 1.1, color: 'var(--text-heading)', margin: 0 }}>{title}</h3>
         {description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, lineHeight: 1.6, color: 'var(--text-body)', margin: 0, textWrap: 'pretty' }}>{description}</p> : null}
         {platforms.length ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{platforms.map((p) => <Badge key={p} tone="neutral">{p}</Badge>)}</div> : null}
-        <Button href={href} iconRight="→" style={{ marginTop: 8 }}>{ctaLabel}</Button>
+        {/* a game on several stores gets a button for each; otherwise the single call to action */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          {(stores && stores.length ? stores : [{ label: ctaLabel, href }]).map((st, n) => <Button key={st.label} variant={n === 0 ? 'primary' : 'light'} href={st.href} iconRight="→">{st.label}</Button>)}
+        </div>
       </div>
     </article>
   );
@@ -307,9 +310,9 @@ const LINKS = ['Home', 'Games', 'Jobs', 'Contact'].map((label) => ({ label, href
 // every in-site link is a plain anchor to the page's own URL
 const link = (p) => ({ href: url(p) });
 const wrap = { maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' };
-const STORE = { rrIos: 'https://apps.apple.com/us/app/rich-revenge-merge-match/id6759077338', rrAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
+const STORE = { rrIos: 'https://apps.apple.com/app/id6759077338', rrAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
 // a game out on more than one store shows a button for each; the others keep their single call to action
-const cta = (g, size, second) => (g.stores || [{ label: g.ctaLabel, href: g.href }]).map((st, n) => <Button key={st.label} size={size} variant={n === 0 ? 'primary' : second} href={st.href} iconRight="→">{st.label}</Button>);
+const storeButtons = (g, size, second) => (g.stores || [{ label: g.ctaLabel, href: g.href }]).map((st, n) => <Button key={st.label} size={size} variant={n === 0 ? 'primary' : second} href={st.href} iconRight="→">{st.label}</Button>);
 const GAMES = [
   // scene: the full-bleed original art the hero camera travels through; focus: the point the camera pushes into (0–1 from the image's top-left)
   { image: A + 'rich-revenge-background.jpg', focus: [0.5, 0.5], mist: [1.0, 0.9, 0.82], genre: 'Merge & Story', title: 'Rich Revenge: Merge & Match', stores: [{ label: 'App Store', href: STORE.rrIos }, { label: 'Google Play', href: STORE.rrAndroid }], page: 'Rich Revenge', platforms: ['iOS', 'Android'], isNew: true, short: 'Rich Revenge', accent: 'var(--gold-500)', tagline: 'Merge fine dining with sweet revenge.',
@@ -334,7 +337,7 @@ function HeroFrame({ game }) {
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(20px, 2.2vw, 26px)', lineHeight: 1.1, color: 'var(--ink-900)' }}>{game.short}</div>
             <div style={{ fontSize: 15, color: 'var(--ink-700)', marginTop: 4 }}>{game.tagline}</div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{cta(game, 'sm', 'dark')}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{storeButtons(game, 'sm', 'dark')}</div>
         </div>
       </div>
     </div>
@@ -736,7 +739,7 @@ function Hero({ go, onOutro }) {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{g.isNew ? <Badge tone="gold">New</Badge> : null}<Badge tone="solid">{g.genre}</Badge></div>
                   <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(40px, 6.4vw, 88px)', lineHeight: 1, letterSpacing: 'var(--tracking-display)', color: '#fff', margin: '14px 0 0', textShadow: '0 5px 0 rgba(6,13,24,.6)' }}>{g.short}</h2>
                   <p style={{ fontSize: 'clamp(17px, 1.7vw, 22px)', lineHeight: 1.4, color: '#fff', margin: '12px 0 22px' }}>{g.tagline}</p>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{cta(g, 'md', 'light')}</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{storeButtons(g, 'md', 'light')}</div>
                 </div>
               );
             })}
