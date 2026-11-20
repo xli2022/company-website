@@ -307,13 +307,16 @@ const LINKS = ['Home', 'Games', 'Jobs', 'Contact'].map((label) => ({ label, href
 // every in-site link is a plain anchor to the page's own URL
 const link = (p) => ({ href: url(p) });
 const wrap = { maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' };
+const STORE = { rrIos: 'https://apps.apple.com/us/app/rich-revenge-merge-match/id6759077338', rrAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
+// a game out on more than one store shows a button for each; the others keep their single call to action
+const cta = (g, size, second) => (g.stores || [{ label: g.ctaLabel, href: g.href }]).map((st, n) => <Button key={st.label} size={size} variant={n === 0 ? 'primary' : second} href={st.href} iconRight="→">{st.label}</Button>);
 const GAMES = [
   // scene: the full-bleed original art the hero camera travels through; focus: the point the camera pushes into (0–1 from the image's top-left)
-  { image: A + 'rich-revenge-background.jpg', focus: [0.5, 0.5], mist: [1.0, 0.9, 0.82], genre: 'Merge & Story', title: 'Rich Revenge: Merge & Match', ctaLabel: 'Get it on Google Play', href: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', page: 'Rich Revenge', platforms: ['iOS', 'Android', 'Windows'], isNew: true, short: 'Rich Revenge', accent: 'var(--gold-500)', tagline: 'Merge fine dining with sweet revenge.',
+  { image: A + 'rich-revenge-background.jpg', focus: [0.5, 0.5], mist: [1.0, 0.9, 0.82], genre: 'Merge & Story', title: 'Rich Revenge: Merge & Match', stores: [{ label: 'App Store', href: STORE.rrIos }, { label: 'Google Play', href: STORE.rrAndroid }], page: 'Rich Revenge', platforms: ['iOS', 'Android'], isNew: true, short: 'Rich Revenge', accent: 'var(--gold-500)', tagline: 'Merge fine dining with sweet revenge.',
     description: 'The Riches Equestrian Club has a new cook, and her secret ingredient is revenge. Help Emma merge fine dining, reclaim her family home, and expose the Riches family.' },
   { image: A + 'realm-defense-background.jpg', focus: [0.49, 0.6], mist: [0.9, 0.96, 1.0], genre: 'Tower Defense RPG', title: 'Realm Defense', ctaLabel: 'Join the defense', href: 'https://www.babeltimeca.com/realm-defense/index.html', page: 'Realm Defense', platforms: ['iOS', 'Android'], short: 'Realm Defense', accent: 'var(--grass-500)', tagline: 'Legendary heroes. Endless waves.',
     description: 'Defender! The kingdom is under attack. Join forces with legendary heroes to fight off waves of evil in this epic tower defense strategy game.' },
-  { image: A + 'draft-wars-background.jpg', focus: [0.52, 0.48], mist: [0.95, 0.97, 1.0], genre: 'Real-Time PvP Strategy', title: 'Draft Wars: PvP Tower Defense', ctaLabel: 'Get it on Google Play', href: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars', page: 'Draft Wars', platforms: ['Android'], short: 'Draft Wars', accent: 'var(--sky-500)', tagline: 'Draft your squad. Win in five minutes.',
+  { image: A + 'draft-wars-background.jpg', focus: [0.52, 0.48], mist: [0.95, 0.97, 1.0], genre: 'Real-Time PvP Strategy', title: 'Draft Wars: PvP Tower Defense', ctaLabel: 'Get it on Google Play', href: STORE.dwAndroid, page: 'Draft Wars', platforms: ['Android'], short: 'Draft Wars', accent: 'var(--sky-500)', tagline: 'Draft your squad. Win in five minutes.',
     description: 'Pick a hero, draft a lineup from 30+ units across three factions, and out-think rival commanders in fast online duels that never run past five minutes.' },
 ];
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -331,7 +334,7 @@ function HeroFrame({ game }) {
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(20px, 2.2vw, 26px)', lineHeight: 1.1, color: 'var(--ink-900)' }}>{game.short}</div>
             <div style={{ fontSize: 15, color: 'var(--ink-700)', marginTop: 4 }}>{game.tagline}</div>
           </div>
-          <Button size="sm" href={game.href} iconRight="→">{game.ctaLabel}</Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{cta(game, 'sm', 'dark')}</div>
         </div>
       </div>
     </div>
@@ -733,7 +736,7 @@ function Hero({ go, onOutro }) {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{g.isNew ? <Badge tone="gold">New</Badge> : null}<Badge tone="solid">{g.genre}</Badge></div>
                   <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(40px, 6.4vw, 88px)', lineHeight: 1, letterSpacing: 'var(--tracking-display)', color: '#fff', margin: '14px 0 0', textShadow: '0 5px 0 rgba(6,13,24,.6)' }}>{g.short}</h2>
                   <p style={{ fontSize: 'clamp(17px, 1.7vw, 22px)', lineHeight: 1.4, color: '#fff', margin: '12px 0 22px' }}>{g.tagline}</p>
-                  <Button href={g.href} iconRight="→">{g.ctaLabel}</Button>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{cta(g, 'md', 'light')}</div>
                 </div>
               );
             })}
@@ -875,7 +878,7 @@ function DepthCard({ game, go }) {
   const z = (n) => (REDUCED || !t.on ? 'none' : 'translateZ(' + n + 'px) scale(' + (1 - n / 900) + ')');
   const ledge = press ? 2 : t.on ? 12 : 8;
   const store = game.href && game.href.indexOf('play.google') > -1;
-  const Tag = game.href ? 'a' : 'div';
+  const Tag = game.page || game.href ? 'a' : 'div';
   return (
     <div style={{ width: '100%', display: 'flex' }}>
       {/* the anchor is the hit box and never moves; the card inside it tilts and presses, so a click near an edge is not lost */}
@@ -971,13 +974,12 @@ function Jobs({ go }) {
   );
 }
 // One dedicated page per game, built from the facts on the live site's game pages.
-const STORE = { rrIos: 'https://apps.apple.com/us/app/rich-revenge-merge-match/id6759077338', rrAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
 const PAGES = {
   // Rich Revenge has no page on the live site. The story line is the studio's own; the character notes and the three
   // "how it plays" points are written from that one line and the game's art, so check them against the game before launch.
   'Rich Revenge': { game: GAMES[0], badge: 'New · Merge & Story', headline: 'Revenge is on the menu.',
     lead: 'The Riches Equestrian Club has a new cook, and her secret ingredient is revenge.',
-    stores: [{ label: 'App Store', href: STORE.rrIos }, { label: 'Google Play', href: STORE.rrAndroid }],
+    stores: GAMES[0].stores,
     about: { eyebrow: 'The story', title: 'A family home, a family secret', body: 'Emma takes a job in the kitchen of the Riches Equestrian Club with more than cooking on her mind. Help her merge her way to fine dining, reclaim her family home, and expose the Riches family, one dish at a time.' },
     castEyebrow: 'The club', castTitle: 'Everyone has something to hide',
     cast: [{ name: 'Emma', image: A + 'rr-emma.jpg', text: 'The new cook. Sharp eyes, steady hands, and a plan she is keeping to herself.' },
