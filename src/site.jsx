@@ -33,28 +33,32 @@ const SIZES = {
   md: { pad: '12px 24px', fs: 16, ledge: 5 },
   lg: { pad: '16px 32px', fs: 20, ledge: 6 },
 };
-function Button({ variant = 'primary', size = 'md', href, children, iconRight, disabled, fullWidth, onClick, style }) {
+// busy: looks and acts disabled, but keeps keyboard focus (a disabled button drops focus to the page)
+function Button({ variant = 'primary', size = 'md', href, children, iconRight, disabled, busy, fullWidth, onClick, style }) {
   const [hover, setHover] = React.useState(false);
   const [press, setPress] = React.useState(false);
   const v = VARIANTS[variant] || VARIANTS.primary;
   const s = SIZES[size] || SIZES.md;
+  const off = disabled || busy;
   const depth = !v.ledge ? 0 : press ? 1 : hover ? s.ledge + 2 : s.ledge;
-  const y = !v.ledge || disabled ? 0 : press ? s.ledge - 1 : hover ? -2 : 0;
+  const y = !v.ledge || off ? 0 : press ? s.ledge - 1 : hover ? -2 : 0;
   const Tag = href && !disabled ? 'a' : 'button';
   return (
-    <Tag href={href} onClick={disabled ? undefined : onClick} disabled={Tag === 'button' ? disabled : undefined}
+    <Tag href={href} onClick={busy ? (e) => e.preventDefault() : disabled ? undefined : onClick} disabled={Tag === 'button' ? disabled : undefined} aria-disabled={busy ? 'true' : undefined}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => { setHover(false); setPress(false); }}
       onMouseDown={() => setPress(true)} onMouseUp={() => setPress(false)}
       style={{
         // the hit box: it never moves, so a press that starts on the button always ends on it
         display: fullWidth ? 'flex' : 'inline-flex', width: fullWidth ? '100%' : undefined, padding: 0, border: 0, background: 'none', font: 'inherit',
-        borderRadius: 'var(--radius-pill)', textDecoration: 'none', cursor: disabled ? 'not-allowed' : 'pointer', color: v.fg, opacity: disabled ? 0.45 : 1, ...style,
+        borderRadius: 'var(--radius-pill)', textDecoration: 'none', cursor: off ? 'not-allowed' : 'pointer', color: v.fg, opacity: off ? 0.45 : 1, ...style,
       }}>
+      {/* the face takes no pointer events, so hover and press always land on the still hit box, even where the lifted face
+          overhangs it; and it is only transformed while it moves, so at rest it does not paint over the hit box's focus ring */}
       <span style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, pointerEvents: 'none',
         fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: s.fs, lineHeight: 1.2, whiteSpace: 'nowrap',
-        padding: s.pad, borderRadius: 'var(--radius-pill)', border: '2px solid ' + v.bd, background: hover && !disabled ? v.hov : v.bg,
-        boxShadow: v.ledge ? '0 ' + depth + 'px 0 ' + v.ledge : 'none', transform: 'translateY(' + y + 'px)',
+        padding: s.pad, borderRadius: 'var(--radius-pill)', border: '2px solid ' + v.bd, background: hover && !off ? v.hov : v.bg,
+        boxShadow: v.ledge ? '0 ' + depth + 'px 0 ' + v.ledge : 'none', transform: y ? 'translateY(' + y + 'px)' : 'none',
         transition: 'transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background var(--dur-fast)',
       }}>
         {children}{iconRight ? <span aria-hidden="true">{iconRight}</span> : null}
@@ -64,11 +68,12 @@ function Button({ variant = 'primary', size = 'md', href, children, iconRight, d
 }
 
 
-function SectionHeading({ eyebrow, title, description, align = 'left', inverse, style }) {
+// as: the heading level; 'h1' where the heading is the page's own title
+function SectionHeading({ eyebrow, title, description, align = 'left', inverse, as: H = 'h2', style }) {
   return (
     <div style={{ textAlign: align, maxWidth: 720, margin: align === 'center' ? '0 auto' : undefined, ...style }}>
       {eyebrow ? <div style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 13, letterSpacing: 'var(--tracking-eyebrow)', textTransform: 'uppercase', color: inverse ? 'var(--orange-300)' : 'var(--orange-700)', marginBottom: 10 }}>{eyebrow}</div> : null}
-      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(32px, 4.5vw, 48px)', lineHeight: 1.08, letterSpacing: 'var(--tracking-display)', color: inverse ? '#fff' : 'var(--text-heading)', margin: 0, textWrap: 'balance' }}>{title}</h2>
+      <H style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(32px, 4.5vw, 48px)', lineHeight: 1.08, letterSpacing: 'var(--tracking-display)', color: inverse ? '#fff' : 'var(--text-heading)', margin: 0, textWrap: 'balance' }}>{title}</H>
       {description ? <p style={{ fontFamily: 'var(--font-body)', fontSize: 18, lineHeight: 1.6, color: inverse ? 'var(--ink-200)' : 'var(--text-muted)', margin: '14px 0 0', textWrap: 'pretty' }}>{description}</p> : null}
     </div>
   );
@@ -168,14 +173,17 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
   const [hover, setHover] = React.useState(null);
   const [open, setOpen] = React.useState(false);
   const narrow = useNarrow();
-  const root = React.useRef(null);
+  const root = React.useRef(null), toggle = React.useRef(null), menu = React.useRef(null);
   React.useEffect(() => { if (!narrow) setOpen(false); }, [narrow]);
   // the open menu closes on Escape, when the page is scrolled, and when a press or the focus lands outside the header
   React.useEffect(() => {
     if (!open) return;
     const y0 = window.scrollY;
-    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
-    const scroll = () => { if (Math.abs(window.scrollY - y0) > 24) setOpen(false); };
+    // keys that scroll the page (Space, arrows, Page Down) close the menu too; focus on one of its links goes back to the
+    // menu button rather than falling to the page when the menu disappears
+    const shut = () => { if (menu.current && toggle.current && menu.current.contains(document.activeElement)) toggle.current.focus(); setOpen(false); };
+    const esc = (e) => { if (e.key === 'Escape') shut(); };
+    const scroll = () => { if (Math.abs(window.scrollY - y0) > 24) shut(); };
     const out = (e) => { if (root.current && !root.current.contains(e.target)) setOpen(false); };
     window.addEventListener('keydown', esc);
     window.addEventListener('scroll', scroll, { passive: true });
@@ -195,7 +203,7 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
           {logoSrc ? <img src={logoSrc} alt={logoAlt} style={{ height: narrow ? 34 : 40, display: 'block' }} /> : <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24, color: 'var(--ink-900)' }}>{logoAlt}</span>}
         </a>
         {narrow ? (
-          <button type="button" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="bt-nav-menu" onClick={() => setOpen(!open)}
+          <button ref={toggle} type="button" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="bt-nav-menu" onClick={() => setOpen(!open)}
             style={{ position: 'relative', width: 44, height: 44, flex: 'none', padding: 0, border: '2px solid var(--ink-100)', borderRadius: 'var(--radius-md)', background: open ? 'var(--ink-100)' : '#fff', color: 'var(--ink-900)', cursor: 'pointer' }}>
             <span aria-hidden="true" style={bar(0)}></span><span aria-hidden="true" style={bar(1)}></span><span aria-hidden="true" style={bar(2)}></span>
           </button>
@@ -218,7 +226,8 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
         )}
       </div>
       {narrow && open ? (
-        <nav id="bt-nav-menu" style={{ position: 'absolute', left: 0, right: 0, top: '100%', background: '#fff', borderBottom: '2px solid var(--ink-100)', boxShadow: 'var(--shadow-pop)', padding: '8px var(--gutter) 20px', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 'calc(100dvh - var(--nav-height))', overflowY: 'auto' }}>
+        // overscroll stays inside the menu, so scrolling it to the end does not scroll the page and close it
+        <nav id="bt-nav-menu" ref={menu} style={{ position: 'absolute', left: 0, right: 0, top: '100%', background: '#fff', borderBottom: '2px solid var(--ink-100)', boxShadow: 'var(--shadow-pop)', padding: '8px var(--gutter) 20px', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 'calc(100dvh - var(--nav-height))', overflowY: 'auto', overscrollBehavior: 'contain' }}>
           {links.map((l) => {
             const on = active === l.label;
             return (
@@ -239,21 +248,28 @@ function NavBar({ logoSrc, logoAlt = 'Babeltime', links = [], active, onNavigate
 
 function FooterLink({ link }) {
   const [hover, setHover] = React.useState(false);
+  const [focus, setFocus] = React.useState(false);
+  // keyboard focus keeps the highlight on its own, so moving the mouse over and off a focused link does not hide where focus is
+  const on = hover || focus;
   return (
-    <a href={link.href || '#'} onClick={link.onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onFocus={() => setHover(true)} onBlur={() => setHover(false)}
-      style={{ position: 'relative', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 15, fontWeight: hover ? 700 : 400, textDecoration: 'none', outline: 'none',
-        color: hover ? 'var(--orange-700)' : 'var(--text-body)', transform: hover ? 'translateX(18px)' : 'none', transition: 'transform var(--dur-base) var(--ease-out), color var(--dur-fast)' }}>
-      <span aria-hidden="true" style={{ position: 'absolute', left: -18, fontFamily: 'var(--font-display)', opacity: hover ? 1 : 0, transform: hover ? 'none' : 'translateX(-6px)', transition: 'opacity var(--dur-fast), transform var(--dur-base) var(--ease-out)' }}>→</span>
-      {link.label}
+    // the link's box stays put, with room on the right for the slide; only the label inside moves, so it never slides out from
+    // under a resting pointer
+    <a href={link.href || '#'} onClick={link.onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 28, paddingRight: 18, fontSize: 15, textDecoration: 'none', outline: 'none',
+        color: on ? 'var(--orange-700)' : 'var(--text-body)', transition: 'color var(--dur-fast)' }}>
+      <span style={{ position: 'relative', display: 'inline-block', fontWeight: on ? 700 : 400, transform: on ? 'translateX(18px)' : 'none', transition: 'transform var(--dur-base) var(--ease-out)' }}>
+        <span aria-hidden="true" style={{ position: 'absolute', left: -18, pointerEvents: 'none', fontFamily: 'var(--font-display)', opacity: on ? 1 : 0, transform: on ? 'none' : 'translateX(-6px)', transition: 'opacity var(--dur-fast), transform var(--dur-base) var(--ease-out)' }}>→</span>
+        {link.label}
+      </span>
     </a>
   );
 }
 function FooterLogo({ src, href, onClick }) {
   const [hover, setHover] = React.useState(false);
   return (
-    <a href={href || '#'} onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{ display: 'inline-block', transform: hover ? 'translateY(-3px) rotate(-2deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-bounce)' }}>
-      <img src={src} alt="Babeltime" style={{ height: 44, display: 'block' }} />
+    // the picture lifts, not the link, so the bottom edge of the link stays under the pointer
+    <a href={href || '#'} onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ display: 'inline-block' }}>
+      <img src={src} alt="Babeltime" style={{ height: 44, display: 'block', transform: hover ? 'translateY(-3px) rotate(-2deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-bounce)' }} />
     </a>
   );
 }
@@ -361,8 +377,9 @@ const TAKE_BRIDGE = [0.44, 0.55];
 const TAKE_JUMP = [0.2, 0.62, 0.8];
 const lerpMap = (m, p) => { p = Math.max(m[0][0], p); for (let i = 1; i < m.length; i++) { const a = m[i - 1], b = m[i]; if (p <= b[0]) return a[1] + (b[1] - a[1]) * (p - a[0]) / (b[0] - a[0]); } return m[m.length - 1][1]; };
 const takeX = (p) => lerpMap(TAKE_MAP, p);
-function Hero({ go, onFilm }) {
-  const track = React.useRef(null);
+// onOutro(on): told when the hero passes 90% of its scroll, the point from which the outro may show and be used
+function Hero({ go, onOutro }) {
+  const track = React.useRef(null), outro = React.useRef(false);
   const [x, setX] = React.useState(0);
   const N = GAMES.length;
   const END = N + 0.5; // the last half step is the clouds rising into Featured Games
@@ -389,6 +406,7 @@ function Hero({ go, onFilm }) {
       pRef.current = p;
       document.documentElement.style.setProperty('--take-p', p.toFixed(4));
       setX(TAKE ? takeX(p) : p * END);
+      if (p >= 0.9 !== outro.current) { outro.current = p >= 0.9; if (onOutro) onOutro(outro.current); }
     };
     const on = () => { if (!raf) raf = requestAnimationFrame(read); };
     read();
@@ -411,9 +429,9 @@ function Hero({ go, onFilm }) {
     if (mq.addEventListener) mq.addEventListener('change', on); else mq.addListener(on);
     return () => { if (mq.removeEventListener) mq.removeEventListener('change', on); else mq.removeListener(on); };
   }, []);
-  // 200px is kept free under the film for the title and its line, however short the stage is
-  const FILM_H = tall ? 'min(120vw, 100% - 200px)' : '100%';
-  React.useEffect(() => { if (onFilm) onFilm(depth); }, [depth]);
+  // 200px is kept free under the film for the title and its line, however short the stage is. With reduced motion there are
+  // no titles: the stage itself shrinks to the picture instead (see the stage's height below).
+  const FILM_H = tall && !REDUCED ? 'min(120vw, 100% - 200px)' : '100%';
   xRef.current = x;
   React.useEffect(() => {
     // with reduced motion the poster is the whole hero: do not download or decode the film at all
@@ -521,7 +539,7 @@ function Hero({ go, onFilm }) {
     ['ta', 'tb', 'res', 'sa', 'sb', 'fa', 'fb', 'm', 'za', 'zb', 'mx', 'pc', 'pr', 'ks', 'cs', 'tm', 'ma', 'mb', 'en', 'tf', 'tk', 'lay', 'zf', 'fl', 'br', 'ff'].forEach((k) => { U[k] = gl.getUniformLocation(pr, k); });
     const tex = GAMES.map(() => null);
     const ext = GAMES.map(() => null);
-    let alive = true, left = TAKE ? 0 : GAMES.reduce((k, g) => k + (g.layers ? 3 : 1), 0), raf = 0, vis = true;
+    let alive = true, left = TAKE ? 0 : GAMES.reduce((k, g) => k + (g.layers ? 3 : 1), 0), raf = 0, vis = true, snap = false, pend = 0;
     const t0 = performance.now();
     // the take: a muted video that is never played, only seeked to the frame the scroll position asks for
     const vid = TAKE ? document.createElement('video') : null;
@@ -558,11 +576,18 @@ function Hero({ go, onFilm }) {
         const grab = (tx, v, last) => { if (v.readyState < 2 || v.seeking) return -1; if (v.currentTime === last) return last; try { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); return v.currentTime; } catch (e) { return -1; } };
         if (T < 1) { const g = grab(vtex, vid, got1); if (g >= 0) got1 = g; }
         if (T > 0) { const g = grab(vtex2, vid2, got2); if (g >= 0) got2 = g; }
-        const seek = (v, at, want) => { const nx = at + (want - at) * 0.2; if (!v.seeking && Math.abs(v.currentTime - nx) > 0.012) v.currentTime = nx; return nx; };
+        const seek = (v, at, want) => { const nx = snap ? want : at + (want - at) * 0.2; if (!v.seeking && Math.abs(v.currentTime - nx) > 0.012) v.currentTime = nx; return nx; };
         // inside the bridge both parts must sit exactly on their held frames, so skip the easing there
         const hold = (v, want) => { if (!v.seeking && Math.abs(v.currentTime - want) > 0.012) v.currentTime = want; return want; };
         vt = T > 0 ? hold(vid, TAKE_CUT[0]) : seek(vid, vt, Math.min(lerpMap(TAKE_ONE, p), end));
         vt2 = T < 1 ? hold(vid2, TAKE_CUT[1]) : seek(vid2, vt2, Math.min(lerpMap(TAKE_TWO, p), end));
+        // Back on screen after the loop was stopped (the scroll may have jumped anywhere meanwhile): go straight to this scroll
+        // position's frames instead of easing through every frame in between, and keep the last picture up until they arrive.
+        if (snap) { snap = false; pend = performance.now(); }
+        if (pend) {
+          if (((T >= 1 || Math.abs(got1 - vt) < 0.05) && (T <= 0 || Math.abs(got2 - vt2) < 0.05)) || performance.now() - pend > 600) pend = 0;
+          else return;
+        }
         if ((T < 1 && got1 < 0) || (T > 0 && got2 < 0)) return;
         // the horse matte only fits the one held frame; if either part's drawn frame is not that one yet, cross-dissolve instead
         const held = horse && Math.abs(got1 - TAKE_CUT[0]) < 0.03 && Math.abs(got2 - TAKE_CUT[1]) < 0.03;
@@ -640,7 +665,7 @@ function Hero({ go, onFilm }) {
       load(g.scene || g.image, (v) => { tex[n] = v; });
       if (g.layers) { const e = {}; ext[n] = e; load(g.layers.back, (v) => { e.back = v; }); load(g.layers.mask, (v) => { e.mask = v; }); }
     });
-    const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { vis = es[es.length - 1].isIntersecting; if (vis && alive && !raf && left === 0) draw(); }) : null;
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { vis = es[es.length - 1].isIntersecting; if (vis) snap = true; if (vis && alive && !raf && left === 0) draw(); }) : null;
     if (io) io.observe(cv);
     // if the browser takes the GL context away, stop drawing and bring the poster back instead of leaving a blank stage
     const lost = () => { alive = false; if (raf) cancelAnimationFrame(raf); raf = 0; setDepth(false); };
@@ -653,13 +678,16 @@ function Hero({ go, onFilm }) {
   };
   const intro = 1 - c01(x / 0.45);
   const active = x < 0.5 ? -1 : Math.min(N - 1, Math.max(0, Math.round(x - 1)));
+  const titleO = (n) => c01((x - (n + 0.6)) / 0.25) * (1 - c01((x - (n + 1.2)) / 0.2));
   return (
     <section ref={track} style={{ position: 'relative', height: REDUCED ? 'auto' : 'calc(' + STAGE_H + ' * ' + (TAKE ? TAKE_SCREENS + 1 : END + 0.6) + ')', background: 'var(--paper)' }}>
-      <div ref={stage} onMouseMove={move} onMouseLeave={() => aim(0, 0)} style={{ '--mx': 0, '--my': 0, position: REDUCED ? 'relative' : 'sticky', top: REDUCED ? 0 : NAV, height: STAGE_H, overflow: 'hidden', background: TAKE ? 'var(--paper)' : 'var(--ink-900)', color: '#fff' }}>
+      {/* with reduced motion on a tall screen the stage is just the picture: there are no titles to keep room for underneath */}
+      <div ref={stage} onMouseMove={move} onMouseLeave={() => aim(0, 0)} style={{ '--mx': 0, '--my': 0, position: REDUCED ? 'relative' : 'sticky', top: REDUCED ? 0 : NAV, height: REDUCED && tall ? 'min(120vw, ' + STAGE_H + ')' : STAGE_H, overflow: 'hidden', background: TAKE ? 'var(--paper)' : 'var(--ink-900)', color: '#fff' }}>
         {/* the world: follows the pointer (outer), drifts on its own (inner), and is pushed into by scroll (art layers) */}
         <canvas ref={canvas} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: FILM_H, display: 'block', opacity: depth ? 1 : 0, zIndex: depth ? 0 : -1 }}></canvas>
-        {/* fallback when WebGL is unavailable: the same art as flat layers */}
-        {TAKE ? <div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: FILM_H, background: 'url(' + A + 'hero-take-poster.jpg) center / cover', visibility: depth ? 'hidden' : 'visible' }}></div> : null}
+        {/* fallback when WebGL is unavailable: the same art as flat layers. Without the film the poster fades to paper over the
+            last tenth of the hero, as the film's own clouds do, so the outro that rises over the stage there never covers it */}
+        {TAKE ? <div aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: FILM_H, background: 'url(' + A + 'hero-take-poster.jpg) center / cover', visibility: depth ? 'hidden' : 'visible', opacity: REDUCED ? 1 : 'clamp(0, calc((0.9 - var(--take-p, 0)) * 16), 1)' }}></div> : null}
         <div aria-hidden="true" style={{ position: 'absolute', inset: -48, transform: par(-34, -22), willChange: 'transform', visibility: depth ? 'hidden' : 'visible', display: TAKE ? 'none' : 'block' }}>
           <div style={{ position: 'absolute', inset: 0, animation: REDUCED ? 'none' : 'bt-drift 22s ease-in-out infinite alternate' }}>
             {GAMES.map((g, n) => (
@@ -733,9 +761,11 @@ function Hero({ go, onFilm }) {
             <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: tall ? 'var(--ink-700)' : '#fff' }}>Scroll to explore</span>
           </div>
         )}
-        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it */}
+        {/* on the film, type is part of the picture: one large title per game. Where it is set over the picture (wide screens), a
+            soft shade rises from the bottom while a title shows, so the white type stays readable on pale frames */}
+        {TAKE && !REDUCED && !tall ? <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to top, rgba(20,35,59,.78) 0%, rgba(20,35,59,.6) 22%, rgba(20,35,59,0) 50%)', opacity: Math.max(0, ...GAMES.map((g, n) => titleO(n))) }}></div> : null}
         {TAKE && !REDUCED ? GAMES.map((g, n) => {
-          const tin = c01((x - (n + 0.6)) / 0.25), o = tin * (1 - c01((x - (n + 1.2)) / 0.2));
+          const tin = c01((x - (n + 0.6)) / 0.25), o = titleO(n);
           return (
             <div key={g.title} aria-hidden={o < 0.5} style={{ position: 'absolute', left: 'max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)))', right: 'var(--gutter)', top: tall ? 'calc(' + FILM_H + ' + 24px)' : 'auto', bottom: tall ? 'auto' : 'clamp(20px, 9%, 120px)', pointerEvents: 'none', opacity: o, visibility: o > 0 ? 'visible' : 'hidden', transform: 'translateY(' + ((1 - tin) * 30) + 'px)' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: tall ? 'clamp(40px, 13vw, 72px)' : 'clamp(34px, 10vw, 164px)', lineHeight: 0.92, letterSpacing: '-0.01em', color: tall ? 'var(--ink-900)' : '#fff', margin: 0, textShadow: tall ? 'none' : '0 2px 28px rgba(20,35,59,.4)' }}>{g.short}</h2>
@@ -805,13 +835,19 @@ function HeroClassic({ go }) {
   );
 }
 // After the film: the studio's own words and the two ways in, set on the paper the clouds turn into.
-function HeroOutro({ go, film }) {
+// on: the hero is at least 90% through, so the outro is showing and may take clicks and taps
+function HeroOutro({ go, on }) {
   return (
-    <section style={{ ...wrap, padding: '0 var(--gutter)', position: 'relative', zIndex: 2,
-      // pulled up over the lower half of the film's last, all-white screen, which halves the empty stretch after the clouds;
-      // it stays invisible until the clouds have started, so it never sits on top of the picture. Without the film (no WebGL,
-      // still loading, reduced motion) there are no clouds to arrive on, so it simply follows the poster.
-      marginTop: film ? 'calc(' + STAGE_H + ' * -0.5)' : 'clamp(48px, 7vw, 96px)', opacity: film ? 'clamp(0, calc((var(--take-p, 1) - 0.9) * 12), 1)' : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+    // While it is invisible it takes no clicks or taps (on a tall screen it sits in plain view under the capped stage), and a
+    // keyboard user who tabs into it early is scrolled on until it shows. It stays in the accessibility tree throughout: it
+    // holds the home page's only visible h1.
+    <section onFocus={on ? undefined : (e) => e.currentTarget.scrollIntoView({ block: 'end' })} style={{ ...wrap, padding: '0 var(--gutter)', position: 'relative', zIndex: 2,
+      // pulled up over the lower half of the hero's last, all-white screen (the film's clouds, or the poster once it has faded
+      // to paper), which halves the empty stretch after the clouds. This layout never changes while the page is open, so nothing
+      // below jumps when the film arrives late or its GL context is lost. It stays invisible until the clouds have started, so
+      // it never sits on top of the picture.
+      marginTop: REDUCED ? 'clamp(48px, 7vw, 96px)' : 'calc(' + STAGE_H + ' * -0.5)', opacity: REDUCED ? 1 : 'clamp(0, calc((var(--take-p, 1) - 0.9) * 12), 1)',
+      pointerEvents: on ? undefined : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <Badge tone="orange">Game development studio · Berkeley, CA</Badge>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(40px, 6vw, 80px)', lineHeight: 1.04, letterSpacing: 'var(--tracking-display)', color: 'var(--ink-900)', margin: '24px 0 0', maxWidth: 940 }}>Creating worlds you’ll love to inhabit.</h1>
@@ -881,12 +917,14 @@ function Reveal({ children, delay = 0, basis = '340px' }) {
     io.observe(ref.current);
     return () => io.disconnect();
   }, []);
-  return <div ref={ref} style={{ display: 'flex', flex: '1 1 ' + basis, maxWidth: basis === '100%' ? undefined : 400, minWidth: 0, opacity: seen ? 1 : 0, transform: seen ? 'none' : 'perspective(1100px) rotateY(-38deg) rotateZ(-5deg) scale(.86)', transition: 'opacity 600ms ' + delay + 'ms var(--ease-out), transform 700ms ' + delay + 'ms var(--ease-bounce)' }}>{children}</div>;
+  // until it has been revealed the card is invisible, so it must not take taps or clicks either
+  return <div ref={ref} style={{ display: 'flex', flex: '1 1 ' + basis, maxWidth: basis === '100%' ? undefined : 400, minWidth: 0, pointerEvents: seen ? undefined : 'none', opacity: seen ? 1 : 0, transform: seen ? 'none' : 'perspective(1100px) rotateY(-38deg) rotateZ(-5deg) scale(.86)', transition: 'opacity 600ms ' + delay + 'ms var(--ease-out), transform 700ms ' + delay + 'ms var(--ease-bounce)' }}>{children}</div>;
 }
-function Games({ featured, go }) {
+// headingAs: 'h1' when the section is the whole page (games.html); on the home page it is a section under the page's own h1
+function Games({ featured, go, headingAs }) {
   return (
     <section id="games" style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)', scrollMarginTop: NAV }}>
-      <SectionHeading eyebrow="The Library" title="Featured Games" description="Immerse yourself in epic adventures crafted with passion and precision." align="center" />
+      <SectionHeading as={headingAs} eyebrow="The Library" title="Featured Games" description="Immerse yourself in epic adventures crafted with passion and precision." align="center" />
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 48 }}>
         {GAMES.map((g, n) => <Reveal key={g.title} delay={n * 120} basis={featured ? '100%' : '340px'}>{featured ? <Tilt><GameCard {...g} layout="horizontal" style={{ width: '100%' }} /></Tilt> : <DepthCard game={g} go={go} />}</Reveal>)}
       </div>
@@ -923,7 +961,7 @@ function Jobs({ go }) {
   // There are no open roles right now (matches babeltimeca.com/jobs.html). Nothing here should read as a live listing.
   return (
     <section style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)' }}>
-      <SectionHeading eyebrow="Jobs" title="Join the adventure" description="Shape the future of strategy games with us." align="center" />
+      <SectionHeading as="h1" eyebrow="Jobs" title="Join the adventure" description="Shape the future of strategy games with us." align="center" />
       <div style={{ margin: '48px auto 0', maxWidth: 760, padding: 'clamp(24px, 4vw, 48px)', background: '#fff', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
         <Badge tone="neutral">Current openings</Badge>
         <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(26px, 3.4vw, 36px)', lineHeight: 1.1, color: 'var(--ink-900)', margin: 0 }}>No open roles right now.</h2>
@@ -1055,8 +1093,13 @@ function GamePage({ data, go }) {
 const MAILER = 'https://picx1a48o9.execute-api.us-east-1.amazonaws.com/dev/static-site-mailer';
 function Contact() {
   const [state, setState] = React.useState('idle'); // idle | sending | sent | failed
+  // on success the form, and the focused Send button with it, is replaced by the note: focus moves to the note instead of
+  // falling back to the page, so keyboard and screen-reader users hear it and keep their place
+  const note = React.useRef(null);
+  React.useEffect(() => { if (state === 'sent' && note.current) note.current.focus(); }, [state]);
   const submit = (e) => {
     e.preventDefault();
+    if (state === 'sending') return;
     const f = e.target;
     setState('sending');
     fetch(MAILER, { method: 'POST', headers: { 'Accept': 'application/json; charset=utf-8', 'Content-Type': 'application/json; charset=UTF-8' },
@@ -1065,15 +1108,15 @@ function Contact() {
   };
   return (
     <section style={{ ...wrap, padding: 'clamp(64px, 9vw, 96px) var(--gutter)' }}>
-      <SectionHeading eyebrow="Contact" title="Say hello" description="Questions about our games, press, or partnerships." align="center" />
+      <SectionHeading as="h1" eyebrow="Contact" title="Say hello" description="Questions about our games, press, or partnerships." align="center" />
       <p style={{ margin: '16px 0 0', fontSize: 17, color: 'var(--ink-700)', textAlign: 'center' }}>General inquiries: <a href="mailto:info@babeltimeus.com" style={{ fontWeight: 700 }}>info@babeltimeus.com</a></p>
-      {state === 'sent' ? <p role="status" style={{ marginTop: 32, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 22, color: 'var(--grass-700)', textAlign: 'center' }}>Thanks for the message. We’ll be in touch shortly.</p> : (
+      {state === 'sent' ? <p ref={note} tabIndex={-1} role="status" style={{ marginTop: 32, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 22, color: 'var(--grass-700)', textAlign: 'center' }}>Thanks for the message. We’ll be in touch shortly.</p> : (
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16, margin: '48px auto 0', maxWidth: 564, padding: 32, background: '#fff', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-card)' }}>
           <Input label="Name" name="name" required autoComplete="name" placeholder="Your name" />
           <Input label="Email" name="reply_to" type="email" required autoComplete="email" placeholder="you@example.com" />
           <Input label="Message" name="message" required multiline placeholder="How can we help?" />
           {state === 'failed' ? <p role="alert" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ruby-700)' }}>Something went wrong. Please try again, or email us directly.</p> : null}
-          <Button disabled={state === 'sending'} style={{ alignSelf: 'flex-start' }}>{state === 'sending' ? 'Sending…' : 'Send message'}</Button>
+          <Button busy={state === 'sending'} style={{ alignSelf: 'flex-start' }}>{state === 'sending' ? 'Sending…' : 'Send message'}</Button>
         </form>
       )}
     </section>
@@ -1082,14 +1125,20 @@ function Contact() {
 function App() {
   const page = URLS[window.BT_PAGE] ? window.BT_PAGE : 'Home';
   const go = (p) => { window.location.href = url(p); };
-  const [film, setFilm] = React.useState(false);
-  // old links to the home page's #games and #about still land on those sections once they exist
-  React.useEffect(() => { const el = window.location.hash.length > 1 && document.getElementById(window.location.hash.slice(1)); if (el) el.scrollIntoView(); }, []);
+  const [outro, setOutro] = React.useState(REDUCED);
+  // old links to the home page's #games and #about still land on those sections once they exist. Only on a fresh visit: on a
+  // reload or a Back/Forward the browser puts the reader back where they were, and that must win.
+  React.useEffect(() => {
+    const nav = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+    if (nav && nav.type !== 'navigate') return;
+    const el = window.location.hash.length > 1 && document.getElementById(window.location.hash.slice(1));
+    if (el) el.scrollIntoView();
+  }, []);
   return (
     <div>
       <NavBar logoSrc={A + 'babeltime-logo.png'} links={LINKS} active={PAGES[page] ? 'Games' : page} />
-      {page === 'Home' ? <React.Fragment><Hero go={go} onFilm={setFilm} />{TAKE ? <HeroOutro go={go} film={film} /> : null}<Games go={go} /><About /><HireBand go={go} /></React.Fragment> : null}
-      {page === 'Games' ? <Games go={go} /> : null}
+      {page === 'Home' ? <React.Fragment><Hero go={go} onOutro={setOutro} />{TAKE ? <HeroOutro go={go} on={outro} /> : null}<Games go={go} /><About /><HireBand go={go} /></React.Fragment> : null}
+      {page === 'Games' ? <Games go={go} headingAs="h1" /> : null}
       {PAGES[page] ? <GamePage key={page} data={PAGES[page]} go={go} /> : null}
       {page === 'Jobs' ? <Jobs go={go} /> : null}
       {page === 'Contact' ? <Contact /> : null}
