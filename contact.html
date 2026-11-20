@@ -1,168 +1,36 @@
-<!DOCTYPE html>
-<html lang="en-US">
-
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Contact | Babeltime Inc.</title>
-
-    <link rel='stylesheet' href='assets/css/bootstrap.min.css?ver=5.1.3' type='text/css' media='all' />
-    <!-- Fancy Redesign Styles -->
-    <link rel="stylesheet" href="assets/css/main.css">
-
-    <link rel="icon" href="assets/babeltime-logo-icon.png" sizes="32x32" />
-    <style>
-        .form-control {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 0.8rem 1.25rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-control:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
-            color: #fff;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            display: block;
-            color: var(--text-secondary);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Babeltime Inc.</title>
+<meta name="description" content="Get in touch with Babeltime about our games, press or partnerships.">
+<link rel="canonical" href="https://www.babeltimeca.com/contact.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Contact — Babeltime Inc.">
+<meta property="og:description" content="Get in touch with Babeltime about our games, press or partnerships.">
+<meta property="og:url" content="https://www.babeltimeca.com/contact.html">
+<meta property="og:image" content="https://www.babeltimeca.com/site/media/hero-take-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/babeltime-logo-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&amp;display=swap">
+<link rel="stylesheet" href="site/site.css">
 </head>
-
 <body>
-    <nav class="navbar scrolled" id="main-navbar">
-        <div class="container navbar-inner">
-            <a href="index.html" class="logo">
-                <img src="assets/babeltime-logo.png" alt="Babeltime Inc." height="40">
-            </a>
-            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle Navigation">
-                &#9776;
-            </button>
-            <ul class="nav-links" id="nav-links">
-                <li><a href="index.html" class="nav-link">Home</a></li>
-                <li><a href="realm-defense/index.html" class="nav-link">Realm Defense</a></li>
-                <li><a href="draft-wars/index.html" class="nav-link">Draft Wars</a></li>
-                <li><a href="jobs.html" class="nav-link">Jobs</a></li>
-                <li><a href="contact.html" class="nav-link active">Contact</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <main id="content" class="section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-5">
-                    <span class="game-tag reveal">Contact Us</span>
-                    <h1 class="reveal" style="margin-bottom: 2.5rem;">Let's Connect.</h1>
-
-                    <div class="glass-card reveal" style="margin-bottom: 2rem;">
-                        <h5 style="color: var(--accent-blue); margin-bottom: 1rem;">General Inquiries</h5>
-                        <p style="color: var(--text-secondary);"><a
-                                href="mailto:info@babeltimeus.com">info@babeltimeus.com</a></p>
-                    </div>
-
-                </div>
-
-                <div class="col-lg-6 offset-lg-1">
-                    <div class="glass-card reveal" style="padding: 3rem;">
-                        <form action="https://picx1a48o9.execute-api.us-east-1.amazonaws.com/dev/static-site-mailer"
-                            method="POST" id="contact-form">
-                            <label>Full Name</label>
-                            <input class="form-control" type="text" name="name" required placeholder="Hero Name">
-
-                            <label>Email Address</label>
-                            <input class="form-control" type="email" name="reply_to" required
-                                placeholder="hero@realm.com">
-
-                            <label>Message</label>
-                            <textarea class="form-control" name="message" rows="5" required
-                                placeholder="How can we help?"></textarea>
-
-                            <button type="submit" class="btn btn-primary"
-                                style="width: 100%; border-radius: 12px; justify-content: center;">Send Message</button>
-                        </form>
-                        <div id="js-form-response" style="margin-top: 1.5rem;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <footer>
-        <div class="container footer-inner">
-            <div class="copyright">
-                &copy; 2026 <a href="index.html">Babeltime Inc.</a> All rights reserved.
-            </div>
-            <div class="footer-links">
-            </div>
-        </div>
-    </footer>
-
-    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script>
-        // Mobile Nav Toggle
-        const navToggle = document.getElementById('nav-toggle');
-        const navLinks = document.getElementById('nav-links');
-        navToggle.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
-
-        // Form Submission logic
-        (() => {
-            const form = document.querySelector('#contact-form');
-            const formResponse = document.querySelector('#js-form-response');
-
-            form.onsubmit = e => {
-                e.preventDefault();
-                const data = {};
-                const formElements = Array.from(form);
-                formElements.map(input => { if (input.name) data[input.name] = input.value });
-
-                var xhr = new XMLHttpRequest();
-                xhr.open(form.method, form.action, true);
-                xhr.setRequestHeader('Accept', 'application/json; charset=utf-8');
-                xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-                xhr.send(JSON.stringify(data));
-
-                xhr.onloadend = response => {
-                    if (response.target.status === 200) {
-                        form.reset();
-                        formResponse.innerHTML = '<p class="alert alert-success" style="background: rgba(40,167,69,0.2); border-color: #28a745; color: #74e38d;">Thanks for the message. We will be in touch shortly.</p>';
-                    } else {
-                        formResponse.innerHTML = '<p class="alert alert-danger" style="background: rgba(220,53,69,0.2); border-color: #dc3545; color: #f89d9d;">Something went wrong. Please try again.</p>';
-                    }
-                };
-            };
-
-            const observerOptions = { threshold: 0.15 };
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('active');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, observerOptions);
-
-            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-            document.querySelectorAll('section h2, .glass-card').forEach(el => {
-                el.classList.add('reveal');
-                observer.observe(el);
-            });
-        })();
-    </script>
+<div id="root"></div>
+<noscript>
+<div style="max-width:720px;margin:48px auto;padding:0 24px">
+<h1>Contact — Babeltime Inc.</h1>
+<p>Get in touch with Babeltime about our games, press or partnerships.</p>
+<p><a href="index.html">Home</a> · <a href="games.html">Games</a> · <a href="jobs.html">Jobs</a> · <a href="contact.html">Contact</a> · <a href="rich-revenge/index.html">Rich Revenge</a> · <a href="realm-defense/index.html">Realm Defense</a> · <a href="draft-wars/index.html">Draft Wars</a></p>
+<p>This site needs JavaScript to show its full content.</p>
+</div>
+</noscript>
+<script>window.BT_PAGE = 'Contact'; window.BT_ROOT = '';</script>
+<script src="site/react.production.min.js"></script>
+<script src="site/react-dom.production.min.js"></script>
+<script src="site/app.js"></script>
 </body>
-
 </html>
