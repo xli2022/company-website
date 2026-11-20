@@ -879,7 +879,8 @@ function DepthCard({ game, go }) {
   };
   const leave = () => { setT({ rx: 0, ry: 0, gx: 50, gy: 50, on: false }); setPress(false); };
   const tr = t.on ? '90ms linear' : '600ms var(--ease-bounce)';
-  const zt = 'transform ' + (t.on ? '260ms var(--ease-out)' : '600ms var(--ease-bounce)');
+  // the layers settle back without overshoot: a bounce would carry them behind the card's white plate for a moment, and the text would vanish
+  const zt = 'transform ' + (t.on ? '260ms var(--ease-out)' : '600ms var(--ease-out)');
   // scale cancels the perspective magnification, so layers part on tilt but never grow past the frame
   const z = (n) => (REDUCED || !t.on ? 'none' : 'translateZ(' + n + 'px) scale(' + (1 - n / 900) + ')');
   const ledge = press ? 2 : t.on ? 12 : 8;
