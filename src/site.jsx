@@ -768,7 +768,10 @@ function Hero({ go, onOutro }) {
             <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: tall ? 'var(--ink-700)' : '#fff' }}>Scroll to explore</span>
           </div>
         )}
-        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it */}
+        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it.
+            DESIGN DECISION, DO NOT CHANGE: the titles keep exactly this light shadow. No shade or overlay on the film, no
+            heavier glow, no outline, even to raise contrast on pale frames; that trade-off is accepted by the designer.
+            Any change to how these titles look needs the designer's (NiZhen001) explicit approval first. See AGENTS.md. */}
         {TAKE && !REDUCED ? GAMES.map((g, n) => {
           const tin = c01((x - (n + 0.6)) / 0.25), o = titleO(n);
           return (
