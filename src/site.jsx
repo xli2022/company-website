@@ -309,7 +309,7 @@ const link = (p) => ({ href: url(p) });
 const wrap = { maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' };
 const GAMES = [
   // scene: the full-bleed original art the hero camera travels through; focus: the point the camera pushes into (0–1 from the image's top-left)
-  { image: A + 'rich-revenge-background.jpg', focus: [0.5, 0.5], mist: [1.0, 0.9, 0.82], genre: 'Merge & Story', title: 'Rich Revenge: Merge & Match', ctaLabel: 'Get it on Google Play', href: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', page: 'Rich Revenge', platforms: ['Android', 'Windows'], isNew: true, short: 'Rich Revenge', accent: 'var(--gold-500)', tagline: 'Merge fine dining with sweet revenge.',
+  { image: A + 'rich-revenge-background.jpg', focus: [0.5, 0.5], mist: [1.0, 0.9, 0.82], genre: 'Merge & Story', title: 'Rich Revenge: Merge & Match', ctaLabel: 'Get it on Google Play', href: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', page: 'Rich Revenge', platforms: ['iOS', 'Android', 'Windows'], isNew: true, short: 'Rich Revenge', accent: 'var(--gold-500)', tagline: 'Merge fine dining with sweet revenge.',
     description: 'The Riches Equestrian Club has a new cook, and her secret ingredient is revenge. Help Emma merge fine dining, reclaim her family home, and expose the Riches family.' },
   { image: A + 'realm-defense-background.jpg', focus: [0.49, 0.6], mist: [0.9, 0.96, 1.0], genre: 'Tower Defense RPG', title: 'Realm Defense', ctaLabel: 'Join the defense', href: 'https://www.babeltimeca.com/realm-defense/index.html', page: 'Realm Defense', platforms: ['iOS', 'Android'], short: 'Realm Defense', accent: 'var(--grass-500)', tagline: 'Legendary heroes. Endless waves.',
     description: 'Defender! The kingdom is under attack. Join forces with legendary heroes to fight off waves of evil in this epic tower defense strategy game.' },
@@ -762,9 +762,7 @@ function Hero({ go, onOutro }) {
             <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: tall ? 'var(--ink-700)' : '#fff' }}>Scroll to explore</span>
           </div>
         )}
-        {/* on the film, type is part of the picture: one large title per game. Where it is set over the picture (wide screens), a
-            soft shade rises from the bottom while a title shows, so the white type stays readable on pale frames */}
-        {TAKE && !REDUCED && !tall ? <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to top, rgba(20,35,59,.78) 0%, rgba(20,35,59,.6) 22%, rgba(20,35,59,0) 50%)', opacity: Math.max(0, ...GAMES.map((g, n) => titleO(n))) }}></div> : null}
+        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it */}
         {TAKE && !REDUCED ? GAMES.map((g, n) => {
           const tin = c01((x - (n + 0.6)) / 0.25), o = titleO(n);
           return (
@@ -973,13 +971,13 @@ function Jobs({ go }) {
   );
 }
 // One dedicated page per game, built from the facts on the live site's game pages.
-const STORE = { rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
+const STORE = { rrIos: 'https://apps.apple.com/us/app/rich-revenge-merge-match/id6759077338', rrAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US', rdIos: 'https://apps.apple.com/app/id1197076384', rdAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.legendstd', dwAndroid: 'https://play.google.com/store/apps/details?id=com.babeltimeus.draftwars' };
 const PAGES = {
   // Rich Revenge has no page on the live site. The story line is the studio's own; the character notes and the three
   // "how it plays" points are written from that one line and the game's art, so check them against the game before launch.
   'Rich Revenge': { game: GAMES[0], badge: 'New · Merge & Story', headline: 'Revenge is on the menu.',
     lead: 'The Riches Equestrian Club has a new cook, and her secret ingredient is revenge.',
-    stores: [{ label: 'Google Play', href: 'https://play.google.com/store/apps/details?id=com.babeltimeus.richrevenge&hl=en_US' }],
+    stores: [{ label: 'App Store', href: STORE.rrIos }, { label: 'Google Play', href: STORE.rrAndroid }],
     about: { eyebrow: 'The story', title: 'A family home, a family secret', body: 'Emma takes a job in the kitchen of the Riches Equestrian Club with more than cooking on her mind. Help her merge her way to fine dining, reclaim her family home, and expose the Riches family, one dish at a time.' },
     castEyebrow: 'The club', castTitle: 'Everyone has something to hide',
     cast: [{ name: 'Emma', image: A + 'rr-emma.jpg', text: 'The new cook. Sharp eyes, steady hands, and a plan she is keeping to herself.' },
