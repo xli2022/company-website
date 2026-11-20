@@ -40,7 +40,7 @@ function Button({ variant = 'primary', size = 'md', href, children, iconRight, d
   const v = VARIANTS[variant] || VARIANTS.primary;
   const s = SIZES[size] || SIZES.md;
   const off = disabled || busy;
-  const depth = !v.ledge ? 0 : press ? 1 : hover ? s.ledge + 2 : s.ledge;
+  const depth = !v.ledge ? 0 : off ? s.ledge : press ? 1 : hover ? s.ledge + 2 : s.ledge;
   const y = !v.ledge || off ? 0 : press ? s.ledge - 1 : hover ? -2 : 0;
   const Tag = href && !disabled ? 'a' : 'button';
   return (
@@ -252,10 +252,10 @@ function FooterLink({ link }) {
   // keyboard focus keeps the highlight on its own, so moving the mouse over and off a focused link does not hide where focus is
   const on = hover || focus;
   return (
-    // the link's box stays put, with room on the right for the slide; only the label inside moves, so it never slides out from
-    // under a resting pointer
+    // the link's box stays put, with room on the right for the slide (taken back by a negative margin, so the footer columns
+    // keep their width); only the label inside moves, so it never slides out from under a resting pointer
     <a href={link.href || '#'} onClick={link.onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 28, paddingRight: 18, fontSize: 15, textDecoration: 'none', outline: 'none',
+      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 28, paddingRight: 18, marginRight: -18, fontSize: 15, textDecoration: 'none', outline: 'none',
         color: on ? 'var(--orange-700)' : 'var(--text-body)', transition: 'color var(--dur-fast)' }}>
       <span style={{ position: 'relative', display: 'inline-block', fontWeight: on ? 700 : 400, transform: on ? 'translateX(18px)' : 'none', transition: 'transform var(--dur-base) var(--ease-out)' }}>
         <span aria-hidden="true" style={{ position: 'absolute', left: -18, pointerEvents: 'none', fontFamily: 'var(--font-display)', opacity: on ? 1 : 0, transform: on ? 'none' : 'translateX(-6px)', transition: 'opacity var(--dur-fast), transform var(--dur-base) var(--ease-out)' }}>→</span>
@@ -377,7 +377,8 @@ const TAKE_BRIDGE = [0.44, 0.55];
 const TAKE_JUMP = [0.2, 0.62, 0.8];
 const lerpMap = (m, p) => { p = Math.max(m[0][0], p); for (let i = 1; i < m.length; i++) { const a = m[i - 1], b = m[i]; if (p <= b[0]) return a[1] + (b[1] - a[1]) * (p - a[0]) / (b[0] - a[0]); } return m[m.length - 1][1]; };
 const takeX = (p) => lerpMap(TAKE_MAP, p);
-// onOutro(on): told when the hero passes 90% of its scroll, the point from which the outro may show and be used
+// onOutro(on): told when the hero passes 95% of its scroll; the outro starts fading in at 90%, and from 95% (60% opaque) it
+// is visible enough to take clicks and taps
 function Hero({ go, onOutro }) {
   const track = React.useRef(null), outro = React.useRef(false);
   const [x, setX] = React.useState(0);
@@ -406,7 +407,7 @@ function Hero({ go, onOutro }) {
       pRef.current = p;
       document.documentElement.style.setProperty('--take-p', p.toFixed(4));
       setX(TAKE ? takeX(p) : p * END);
-      if (p >= 0.9 !== outro.current) { outro.current = p >= 0.9; if (onOutro) onOutro(outro.current); }
+      if (p >= 0.95 !== outro.current) { outro.current = p >= 0.95; if (onOutro) onOutro(outro.current); }
     };
     const on = () => { if (!raf) raf = requestAnimationFrame(read); };
     read();
@@ -835,13 +836,13 @@ function HeroClassic({ go }) {
   );
 }
 // After the film: the studio's own words and the two ways in, set on the paper the clouds turn into.
-// on: the hero is at least 90% through, so the outro is showing and may take clicks and taps
+// on: the hero is at least 95% through, so the outro is showing and may take clicks and taps
 function HeroOutro({ go, on }) {
   return (
-    // While it is invisible it takes no clicks or taps (on a tall screen it sits in plain view under the capped stage), and a
-    // keyboard user who tabs into it early is scrolled on until it shows. It stays in the accessibility tree throughout: it
-    // holds the home page's only visible h1.
-    <section onFocus={on ? undefined : (e) => e.currentTarget.scrollIntoView({ block: 'end' })} style={{ ...wrap, padding: '0 var(--gutter)', position: 'relative', zIndex: 2,
+    // While it is (nearly) invisible it takes no clicks or taps (on a tall screen it sits in plain view under the capped stage),
+    // and a keyboard user who tabs into it early is scrolled to its top, which is always past the end of the hero, so it shows
+    // in full. It stays in the accessibility tree throughout: it holds the home page's only visible h1.
+    <section onFocus={on ? undefined : (e) => e.currentTarget.scrollIntoView({ block: 'start' })} style={{ ...wrap, padding: '0 var(--gutter)', position: 'relative', zIndex: 2, scrollMarginTop: NAV,
       // pulled up over the lower half of the hero's last, all-white screen (the film's clouds, or the poster once it has faded
       // to paper), which halves the empty stretch after the clouds. This layout never changes while the page is open, so nothing
       // below jumps when the film arrives late or its GL context is lost. It stays invisible until the clouds have started, so
