@@ -383,13 +383,6 @@ const TAKE_BRIDGE = [0.44, 0.55];
 const TAKE_JUMP = [0.2, 0.62, 0.8];
 const lerpMap = (m, p) => { p = Math.max(m[0][0], p); for (let i = 1; i < m.length; i++) { const a = m[i - 1], b = m[i]; if (p <= b[0]) return a[1] + (b[1] - a[1]) * (p - a[0]) / (b[0] - a[0]); } return m[m.length - 1][1]; };
 const takeX = (p) => lerpMap(TAKE_MAP, p);
-// White film titles carry their own dark halo, so nothing is laid over the film itself yet they stay readable on its palest
-// frames (Goldie's white stole, clouds, flames): a soft glow round the big title, and round the small tagline a thin
-// outline as well, since a glow alone is too faint beside strokes that thin.
-const INK = (a) => 'rgba(20,35,59,' + a + ')';
-const TITLE_HALO = ['0 0 3px ' + INK(0.6), '0 0 3px ' + INK(0.6), '0 2px 18px ' + INK(0.6), '0 4px 56px ' + INK(0.5)].join(', ');
-const TAGLINE_HALO = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].map(([dx, dy]) => dx + 'px ' + dy + 'px 0 ' + INK(0.8))
-  .concat(['0 0 6px ' + INK(0.9), '0 0 6px ' + INK(0.9), '0 1px 14px ' + INK(0.6)]).join(', ');
 // onOutro(on): told when the hero passes 95% of its scroll; the outro starts fading in at 90%, and from 95% (60% opaque) it
 // is visible enough to take clicks and taps
 function Hero({ go, onOutro }) {
@@ -775,14 +768,13 @@ function Hero({ go, onOutro }) {
             <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', color: tall ? 'var(--ink-700)' : '#fff' }}>Scroll to explore</span>
           </div>
         )}
-        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it (each title brings
-            its own halo, see TITLE_HALO) */}
+        {/* on the film, type is part of the picture: one large title per game, nothing else laid over it */}
         {TAKE && !REDUCED ? GAMES.map((g, n) => {
           const tin = c01((x - (n + 0.6)) / 0.25), o = titleO(n);
           return (
             <div key={g.title} aria-hidden={o < 0.5} style={{ position: 'absolute', left: 'max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)))', right: 'var(--gutter)', top: tall ? 'calc(' + FILM_H + ' + 24px)' : 'auto', bottom: tall ? 'auto' : 'clamp(20px, 9%, 120px)', pointerEvents: 'none', opacity: o, visibility: o > 0 ? 'visible' : 'hidden', transform: 'translateY(' + ((1 - tin) * 30) + 'px)' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: tall ? 'clamp(40px, 13vw, 72px)' : 'clamp(34px, 10vw, 164px)', lineHeight: 0.92, letterSpacing: '-0.01em', color: tall ? 'var(--ink-900)' : '#fff', margin: 0, textShadow: tall ? 'none' : TITLE_HALO }}>{g.short}</h2>
-              <p style={{ fontSize: 'clamp(16px, 1.5vw, 22px)', lineHeight: 1.4, color: tall ? 'var(--ink-700)' : '#fff', margin: tall ? '12px 0 0' : '16px 0 0', textShadow: tall ? 'none' : TAGLINE_HALO }}>{g.tagline}</p>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: tall ? 'clamp(40px, 13vw, 72px)' : 'clamp(34px, 10vw, 164px)', lineHeight: 0.92, letterSpacing: '-0.01em', color: tall ? 'var(--ink-900)' : '#fff', margin: 0, textShadow: tall ? 'none' : '0 2px 28px rgba(20,35,59,.4)' }}>{g.short}</h2>
+              <p style={{ fontSize: 'clamp(16px, 1.5vw, 22px)', lineHeight: 1.4, color: tall ? 'var(--ink-700)' : '#fff', margin: tall ? '12px 0 0' : '16px 0 0', textShadow: tall ? 'none' : '0 1px 12px rgba(20,35,59,.55)' }}>{g.tagline}</p>
             </div>
           );
         }) : null}
